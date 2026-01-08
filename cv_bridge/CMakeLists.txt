@@ -1,48 +1,48 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.3)
 project(cv_bridge)
 
 find_package(catkin REQUIRED COMPONENTS rosconsole sensor_msgs)
-
-if(NOT ANDROID)
-  find_package(PythonLibs)
-  if(PYTHONLIBS_VERSION_STRING VERSION_LESS 3)
-    find_package(Boost REQUIRED python)
-  else()
-    find_package(Boost REQUIRED python3)
-  endif()
-else()
-find_package(Boost REQUIRED)
-endif()
-find_package(OpenCV 3 REQUIRED
-  COMPONENTS
-    opencv_core
-    opencv_imgproc
-    opencv_imgcodecs
-  CONFIG
-)
+find_package(Boost REQUIRED python3 python)
+find_package(OpenCV 3 REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development)
 
 catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS rosconsole sensor_msgs
-  DEPENDS OpenCV
-  CFG_EXTRAS cv_bridge-extras.cmake
+    INCLUDE_DIRS include
+    LIBRARIES ${PROJECT_NAME}
+    CATKIN_DEPENDS rosconsole sensor_msgs
+    DEPENDS OpenCV
 )
 
 catkin_python_setup()
 
-include_directories(include ${Boost_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
+include_directories(include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
-if(NOT ANDROID)
-add_subdirectory(python)
-endif()
-add_subdirectory(src)
-if(CATKIN_ENABLE_TESTING)
-  add_subdirectory(test)
+if(CMAKE_VERSION VERSION_LESS "3.13")
+    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 endif()
 
-# install the include folder
-install(
-  DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+# Make sure the compiler can find include files for our cv_bridge library
+# when other libraries or executables link to cv_bridge
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
+add_library(${PROJECT_NAME} src/cv_bridge.cpp src/rgb_colors.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
+
+install(TARGETS ${PROJECT_NAME}
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+install(DIRECTORY include/${PROJECT_NAME}/
+    DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
+
+# Python Bindings
+set(Python_ADDITIONAL_VERSIONS 3.6)
+find_package(PythonLibs 3.6)
+include_directories(${PYTHON_INCLUDE_DIRS})
+
+# These two lines are key for Python 3
+set(PYTHON_VERSION_MAJOR 3)
+set(PYTHON_VERSION_MINOR 6)
